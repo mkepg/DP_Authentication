@@ -1,0 +1,31 @@
+package com.mm_mk.DP.Authentication.security;
+
+import com.mm_mk.DP.Authentication.model.User;
+import com.mm_mk.DP.Authentication.repository.UserRepository;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+
+@Component
+public class JpaUserDetailsService implements UserDetailsService {
+    private final UserRepository repo;
+
+    public JpaUserDetailsService(UserRepository repo) {
+        this.repo = repo;
+    }
+
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        User u = repo.findByUsername(username)
+                .orElseThrow(()-> new UsernameNotFoundException("No user"));
+        return new org.springframework.security.core.userdetails.User(
+                u.getUsername(),
+                u.getPasswordHash(),
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+    }
+}
