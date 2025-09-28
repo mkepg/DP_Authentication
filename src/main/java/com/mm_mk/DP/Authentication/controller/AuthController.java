@@ -4,7 +4,7 @@ import com.mm_mk.DP.Authentication.model.User;
 import com.mm_mk.DP.Authentication.repository.UserRepository;
 import com.mm_mk.DP.Authentication.request.LoginRequest;
 import com.mm_mk.DP.Authentication.request.RegisterRequest;
-import com.mm_mk.DP.Authentication.response.TokenResponse;
+import com.mm_mk.DP.Authentication.response.AuthenticationResult;
 import com.mm_mk.DP.Authentication.security.JpaUserDetailsService;
 import com.mm_mk.DP.Authentication.security.JwtUtils;
 import jakarta.validation.Valid;
@@ -19,8 +19,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -53,7 +51,11 @@ public class AuthController {
                 .build();
         repo.save(u);
 
-        return ResponseEntity.ok("User " + u.getUsername() + " is successfully registered");
+        UserDetails user = jpaUserDetailsService.loadUserByUsername(u.getUsername());
+        String token = jwtUtils.generateToken(user);
+        AuthenticationResult authenticationResult = new AuthenticationResult("User " + user.getUsername() + " is successfully registered", token);
+
+        return ResponseEntity.ok(authenticationResult);
     }
 
     @PostMapping("/login")
@@ -64,8 +66,8 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid password");
             }
             String token = jwtUtils.generateToken(user);
-            TokenResponse tokenResponse = new TokenResponse("Login successfully", token);
-            return ResponseEntity.ok(tokenResponse);
+            AuthenticationResult authenticationResult = new AuthenticationResult("Login successfully", token);
+            return ResponseEntity.ok(authenticationResult);
         } catch (UsernameNotFoundException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Username is not found");
         }
