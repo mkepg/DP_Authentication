@@ -12,9 +12,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,18 +28,9 @@ public class AuthController {
     private final JwtUtils jwtUtils;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest req, BindingResult result) {
-
-        if(result.hasErrors()) {
-            return ResponseEntity.badRequest().body(
-                    result.getAllErrors().stream()
-                            .map(error -> error.getDefaultMessage())
-                            .toList()
-            );
-        }
-
+    public ResponseEntity<AuthenticationResult> register(@Valid @RequestBody RegisterRequest req) {
         if (repo.existsByUsername(req.getUsername())) {
-            return ResponseEntity.badRequest().body("Username already exists");
+            throw new IllegalArgumentException("Username already exists");
         }
 
         User u = User.builder()
@@ -53,23 +42,26 @@ public class AuthController {
 
         UserDetails user = jpaUserDetailsService.loadUserByUsername(u.getUsername());
         String token = jwtUtils.generateToken(user);
-        AuthenticationResult authenticationResult = new AuthenticationResult("User " + user.getUsername() + " is successfully registered", token);
 
-        return ResponseEntity.ok(authenticationResult);
+        AuthenticationResult authenticationResult = new AuthenticationResult(
+                "User " + user.getUsername() + " is successfully registered",
+                token
+        );
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(authenticationResult);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest req) {
-        try {
-            UserDetails user = jpaUserDetailsService.loadUserByUsername(req.getUsername());
-            if (!encoder.matches(req.getPassword(), user.getPassword())) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid password");
-            }
-            String token = jwtUtils.generateToken(user);
-            AuthenticationResult authenticationResult = new AuthenticationResult("Login successfully", token);
-            return ResponseEntity.ok(authenticationResult);
-        } catch (UsernameNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Username is not found");
+    public ResponseEntity<AuthenticationResult> login(@Valid @RequestBody LoginRequest req) {
+        UserDetails user = jpaUserDetailsService.loadUserByUsername(req.getUsername());
+
+        if (!encoder.matches(req.getPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("Invalid password");
         }
+
+        String token = jwtUtils.generateToken(user);
+        AuthenticationResult authenticationResult = new AuthenticationResult("Login successfully", token);
+
+        return ResponseEntity.ok(authenticationResult);
     }
 }
