@@ -34,3 +34,6 @@ build/
 
 # Ignore private keys
 src/main/resources/*.pem
+
+# Ignore local secrets
+src/main/resources/application-local.properties
