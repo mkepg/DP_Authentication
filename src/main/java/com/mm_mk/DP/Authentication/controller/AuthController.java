@@ -29,14 +29,14 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthenticationResult> register(@Valid @RequestBody RegisterRequest req) {
-        if (repo.existsByUsername(req.getUsername())) {
+        if (repo.existsByUsername(req.username())) {
             throw new IllegalArgumentException("Username already exists");
         }
 
         User u = User.builder()
-                .username(req.getUsername())
-                .passwordHash(encoder.encode(req.getPassword()))
-                .email(req.getEmail())
+                .username(req.username())
+                .passwordHash(encoder.encode(req.password()))
+                .email(req.email())
                 .build();
         repo.save(u);
 
@@ -53,9 +53,9 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthenticationResult> login(@Valid @RequestBody LoginRequest req) {
-        UserDetails user = jpaUserDetailsService.loadUserByUsername(req.getUsername());
+        UserDetails user = jpaUserDetailsService.loadUserByUsername(req.username());
 
-        if (!encoder.matches(req.getPassword(), user.getPassword())) {
+        if (!encoder.matches(req.password(), user.getPassword())) {
             throw new IllegalArgumentException("Invalid password");
         }
 
