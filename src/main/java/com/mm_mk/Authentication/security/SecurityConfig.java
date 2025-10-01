@@ -1,6 +1,5 @@
-package com.mm_mk.DP.Authentication.security;
+package com.mm_mk.Authentication.security;
 
-import com.mm_mk.DP.Authentication.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

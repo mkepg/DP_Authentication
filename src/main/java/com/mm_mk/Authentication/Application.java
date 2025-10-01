@@ -1,4 +1,4 @@
-package com.mm_mk.DP.Authentication;
+package com.mm_mk.Authentication;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

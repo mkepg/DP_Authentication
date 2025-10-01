@@ -1,4 +1,4 @@
-package com.mm_mk.DP.Authentication.request;
+package com.mm_mk.Authentication.request;
 
 import jakarta.validation.constraints.NotBlank;
 

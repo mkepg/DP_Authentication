@@ -1,4 +1,4 @@
-package com.mm_mk.DP.Authentication.exception;
+package com.mm_mk.Authentication.exception;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;

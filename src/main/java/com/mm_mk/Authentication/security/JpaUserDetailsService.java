@@ -1,7 +1,7 @@
-package com.mm_mk.DP.Authentication.security;
+package com.mm_mk.Authentication.security;
 
-import com.mm_mk.DP.Authentication.model.User;
-import com.mm_mk.DP.Authentication.repository.UserRepository;
+import com.mm_mk.Authentication.repository.UserRepository;
+import com.mm_mk.Authentication.model.User;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

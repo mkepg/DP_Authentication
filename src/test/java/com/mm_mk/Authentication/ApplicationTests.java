@@ -1,4 +1,4 @@
-package com.mm_mk.DP.Authentication;
+package com.mm_mk.Authentication;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

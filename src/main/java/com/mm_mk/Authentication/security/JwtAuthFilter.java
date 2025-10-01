@@ -1,4 +1,4 @@
-package com.mm_mk.DP.Authentication.security;
+package com.mm_mk.Authentication.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

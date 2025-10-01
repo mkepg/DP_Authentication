@@ -1,4 +1,4 @@
-package com.mm_mk.DP.Authentication.model;
+package com.mm_mk.Authentication.model;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "users", schema = "auth")
+@Table(name = "users", schema = "public")
 @Getter
 @Setter
 @NoArgsConstructor

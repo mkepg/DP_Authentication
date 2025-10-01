@@ -1,6 +1,6 @@
-package com.mm_mk.DP.Authentication.repository;
+package com.mm_mk.Authentication.repository;
 
-import com.mm_mk.DP.Authentication.model.User;
+import com.mm_mk.Authentication.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

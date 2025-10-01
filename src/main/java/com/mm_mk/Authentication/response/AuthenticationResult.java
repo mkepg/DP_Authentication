@@ -1,4 +1,4 @@
-package com.mm_mk.DP.Authentication.response;
+package com.mm_mk.Authentication.response;
 
 public record AuthenticationResult(
         String message,
