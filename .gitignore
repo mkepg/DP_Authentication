@@ -33,7 +33,7 @@ build/
 .vscode/
 
 # Ignore private keys
-src/main/resources/*.pem
+src/main/resources/certifications/*.pem
 
 # Ignore local secrets
 src/main/resources/application-local.properties
