@@ -1,4 +1,3 @@
-// src/main/java/com/mm_mk/Authentication/config/RabbitMQConfig.java
 package com.mm_mk.Authentication.config;
 
 import org.springframework.amqp.core.Exchange;

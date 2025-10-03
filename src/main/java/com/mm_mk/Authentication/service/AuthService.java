@@ -1,11 +1,8 @@
-// src/main/java/com/mm_mk/DP/Authentication/service/AuthService.java
 package com.mm_mk.Authentication.service;
 
-import com.mm_mk.Authentication.event.UserCreatedEvent;
 import com.mm_mk.Authentication.repository.UserRepository;
 import com.mm_mk.Authentication.response.AuthenticationResult;
-import com.mm_mk.Authentication.security.JpaUserDetailsService;
-import com.mm_mk.Authentication.security.JwtUtils;
+import com.mm_mk.Authentication.util.JwtUtils;
 import com.mm_mk.Authentication.model.User;
 import com.mm_mk.Authentication.request.LoginRequest;
 import com.mm_mk.Authentication.request.RegisterRequest;
@@ -21,36 +18,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final UserRepository repo;
+    private final UserService userService;
     private final PasswordEncoder encoder;
     private final JpaUserDetailsService jpaUserDetailsService;
     private final JwtUtils jwtUtils;
     private final RabbitTemplate rabbitTemplate;
 
-    /**
-     * Handles user registration
-     */
     @Transactional
     public AuthenticationResult register(RegisterRequest req) {
         if (repo.existsByUsername(req.username())) {
             throw new IllegalArgumentException("Username already exists");
         }
 
-        User user = User.builder()
-                .username(req.username())
-                .passwordHash(encoder.encode(req.password()))
-                .email(req.email())
-                .build();
-
-        repo.save(user);
-
-        // Publish event to RabbitMQ
-        UserCreatedEvent event = UserCreatedEvent.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .build();
-
-        rabbitTemplate.convertAndSend("user.exchange", "", event);
+        User user = userService.createUser(
+                req.username(),
+                req.email(),
+                encoder.encode(req.password())
+        );
 
         UserDetails userDetails = jpaUserDetailsService.loadUserByUsername(user.getUsername());
         String token = jwtUtils.generateToken(userDetails);
@@ -61,9 +45,6 @@ public class AuthService {
         );
     }
 
-    /**
-     * Handles user login
-     */
     @Transactional(readOnly = true)
     public AuthenticationResult login(LoginRequest req) {
         UserDetails userDetails = jpaUserDetailsService.loadUserByUsername(req.username());

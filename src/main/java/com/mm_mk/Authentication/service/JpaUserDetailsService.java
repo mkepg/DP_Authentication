@@ -1,4 +1,4 @@
-package com.mm_mk.Authentication.security;
+package com.mm_mk.Authentication.service;
 
 import com.mm_mk.Authentication.repository.UserRepository;
 import com.mm_mk.Authentication.model.User;

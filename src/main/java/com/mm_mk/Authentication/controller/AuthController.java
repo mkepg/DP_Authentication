@@ -1,4 +1,3 @@
-// src/main/java/com/mm_mk/DP/Authentication/controller/AuthController.java
 package com.mm_mk.Authentication.controller;
 
 import com.mm_mk.Authentication.request.LoginRequest;

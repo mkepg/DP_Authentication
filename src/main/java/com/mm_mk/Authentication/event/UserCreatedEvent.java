@@ -1,4 +1,3 @@
-// src/main/java/com/mm_mk/Authentication/event/UserCreatedEvent.java
 package com.mm_mk.Authentication.event;
 
 import lombok.*;
