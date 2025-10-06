@@ -3,7 +3,8 @@ package com.mm_mk.Authentication.request;
 import jakarta.validation.constraints.NotBlank;
 
 public record LoginRequest(
-        @NotBlank String username,
+        String username,
+        String email,
         @NotBlank String password
 ) { }
 

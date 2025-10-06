@@ -47,7 +47,19 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthenticationResult login(LoginRequest req) {
-        UserDetails userDetails = jpaUserDetailsService.loadUserByUsername(req.username());
+
+        if ((req.username() == null || req.username().isBlank()) &&
+                (req.email() == null || req.email().isBlank())) {
+            throw new IllegalArgumentException("Username or email must be provided");
+        }
+
+        UserDetails userDetails;
+
+        if (req.username() != null && !req.username().isBlank()) {
+            userDetails = jpaUserDetailsService.loadUserByUsername(req.username());
+        } else {
+            userDetails = jpaUserDetailsService.loadUserByEmail(req.email());
+        }
 
         if (!encoder.matches(req.password(), userDetails.getPassword())) {
             throw new IllegalArgumentException("Invalid password");
