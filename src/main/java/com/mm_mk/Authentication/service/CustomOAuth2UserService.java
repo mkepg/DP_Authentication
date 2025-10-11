@@ -7,6 +7,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Service
@@ -20,10 +21,7 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
         OAuth2User oauth2User = delegate.loadUser(userRequest);
 
         // Extract user attributes from provider
-        Map<String, Object> attributes = oauth2User.getAttributes();
-
-        String email = ((String) attributes.get("email")).toLowerCase();
-        attributes.put("email", email);
+        Map<String, Object> attributes = new HashMap<>(oauth2User.getAttributes());
 
         if (!attributes.containsKey("email")) {
             throw new OAuth2AuthenticationException("Email not found from OAuth2 provider");
