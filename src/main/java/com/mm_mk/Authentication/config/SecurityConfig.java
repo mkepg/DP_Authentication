@@ -40,7 +40,7 @@ public class SecurityConfig {
                 .cors(withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/oauth2/**", "api/auth/**", "/public/**").permitAll()
+                        .requestMatchers("/oauth2/**", "/api/auth/**", "/public/**").permitAll()
                         .anyRequest().permitAll()
                 )
                 .oauth2Login(oauth -> oauth
