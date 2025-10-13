@@ -22,30 +22,34 @@ public class User {
     @GeneratedValue(generator = "UUID")
     @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
     @Column(name = "id", nullable = false, updatable = false)
-    private UUID id; // Internal user identifier
+    private UUID id;
 
     @Column(name = "username", length = 50, nullable = false, unique = true)
-    private String username; // Login name (used by Spring Security)
+    private String username;
 
     @Column(name = "email", length = 100, nullable = false, unique = true)
-    private String email; // For communication and OAuth mapping
+    private String email;
 
     @Column(name = "password_hash", length = 255, nullable = false)
-    private String passwordHash; // Bcrypt hash for Spring Security
+    private String passwordHash;
 
     @Column(name = "provider", length = 50)
-    private String provider; // e.g., 'local', 'google', 'github'
+    private String provider;
 
     @Column(name = "provider_id", length = 255)
-    private String providerId; // External OAuth provider unique id
+    private String providerId;
+
+	@Enumerated(EnumType.STRING)
+    @Column(name = "preferred_keyboard", insertable = false, updatable = false)
+    private KeyboardModel preferredKeyboard;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt; // Automatically set when created
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt; // Automatically updated when entity changes
+    private LocalDateTime updatedAt;
 
     public User(UUID id, String username, String email, String passwordHash,
                 String provider, String providerId) {
