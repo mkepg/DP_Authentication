@@ -1,0 +1,2 @@
+BUG:
+local_user tables get filled even if there was an error with the dp_authentication users table.
