@@ -25,12 +25,6 @@ public class JpaUserDetailsService implements UserDetailsService {
         return toUserDetails(u);
     }
 
-    public UserDetails loadUserByEmail(String email) throws UsernameNotFoundException {
-        User u = repo.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("No user with email: " + email));
-        return toUserDetails(u);
-    }
-
     private UserDetails toUserDetails(User u) {
         return new org.springframework.security.core.userdetails.User(
                 u.getUsername(),
