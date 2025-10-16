@@ -1,7 +1,9 @@
 package com.mm_mk.Authentication.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mm_mk.Authentication.model.User;
 import com.mm_mk.Authentication.repository.UserRepository;
+import com.mm_mk.Authentication.response.UserDTO;
 import com.mm_mk.Authentication.service.UserService;
 import com.mm_mk.Authentication.util.JwtUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,6 +17,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Component
@@ -63,10 +67,25 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             throw new IllegalArgumentException("Unauthorized Redirect URI: " + redirectUri);
         }
 
-        return UriComponentsBuilder.fromUriString(redirectUri)
-                .fragment("token=" + jwt) // token in fragment part
-                .build()
-                .toUriString();
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+
+            UserDTO userDTO = new UserDTO(
+                    user.getUsername(),
+                    user.getEmail(),
+                    user.getPreferredKeyboard()
+            );
+
+            String userJson = mapper.writeValueAsString(userDTO);
+            String encodedUser = URLEncoder.encode(userJson, StandardCharsets.UTF_8);
+
+            return UriComponentsBuilder.fromUriString(redirectUri)
+                    .fragment("token=" + jwt + "&user=" + encodedUser)
+                    .build()
+                    .toUriString();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize user", e);
+        }
     }
 
     private User createOrUpdateLocalUser(OAuth2User oauthUser) {
