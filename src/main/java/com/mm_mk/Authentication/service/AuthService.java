@@ -127,7 +127,7 @@ public class AuthService {
 
             }
 
-            UserDTO userDTO = new UserDTO(user.getUsername(), user.getEmail(), user.getPreferredKeyboard());
+            UserDTO userDTO = new UserDTO(user.getId() ,user.getUsername(), user.getEmail(), user.getPreferredKeyboard());
 
             return new AuthenticationResult("Login successful", jwt.getTokenValue(), userDTO);
 

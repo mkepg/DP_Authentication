@@ -113,6 +113,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         try {
             ObjectMapper mapper = new ObjectMapper();
             UserDTO userDTO = new UserDTO(
+                    user.getId(),
                     user.getUsername(),
                     user.getEmail(),
                     user.getPreferredKeyboard()
