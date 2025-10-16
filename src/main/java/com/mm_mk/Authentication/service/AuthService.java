@@ -2,6 +2,7 @@ package com.mm_mk.Authentication.service;
 
 import com.mm_mk.Authentication.repository.UserRepository;
 import com.mm_mk.Authentication.response.AuthenticationResult;
+import com.mm_mk.Authentication.response.UserDTO;
 import com.mm_mk.Authentication.util.JwtUtils;
 import com.mm_mk.Authentication.model.User;
 import com.mm_mk.Authentication.request.LoginRequest;
@@ -40,7 +41,13 @@ public class AuthService {
         UserDetails userDetails = jpaUserDetailsService.loadUserByUsername(user.getUsername());
         String token = jwtUtils.generateToken(userDetails);
 
-        return new AuthenticationResult("User " + userDetails.getUsername() + " is successfully registered", token, user);
+        UserDTO userDTO = new UserDTO(
+                user.getUsername(),
+                user.getEmail(),
+                user.getPreferredKeyboard()
+        );
+
+        return new AuthenticationResult("User " + userDetails.getUsername() + " is successfully registered", token, userDTO);
     }
 
     @Transactional(readOnly = true)
@@ -67,7 +74,14 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid password");
 
         String token = jwtUtils.generateToken(userDetails);
-        return new AuthenticationResult("Login successfully", token, user);
+
+        UserDTO userDTO = new UserDTO(
+                user.getUsername(),
+                user.getEmail(),
+                user.getPreferredKeyboard()
+        );
+
+        return new AuthenticationResult("Login successfully", token, userDTO);
     }
 
 }
