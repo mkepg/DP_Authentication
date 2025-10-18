@@ -5,5 +5,5 @@ import com.mm_mk.Authentication.model.User;
 public record AuthenticationResult(
         String message,
         String token,
-        User user
+        UserDTO user
 ) { }
