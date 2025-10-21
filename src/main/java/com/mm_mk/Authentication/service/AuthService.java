@@ -46,6 +46,7 @@ public class AuthService {
             throw new IllegalArgumentException("Username already exists");
         }
 
+        // Use the original 3-argument version - let database handle default
         User user = userService.createUser(
                 req.username(),
                 req.email(),

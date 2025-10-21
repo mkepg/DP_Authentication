@@ -1,6 +1,7 @@
 package com.mm_mk.Authentication.service;
 
 import com.mm_mk.Authentication.event.UserCreatedEvent;
+import com.mm_mk.Authentication.model.KeyboardModel;
 import com.mm_mk.Authentication.model.User;
 import com.mm_mk.Authentication.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -25,15 +26,14 @@ public class UserService {
 
         User saved = repo.save(user);
 
-        // publish event
         UserCreatedEvent event = UserCreatedEvent.builder()
                 .id(saved.getId())
                 .username(saved.getUsername())
                 .email(saved.getEmail())
+                .preferredKeyboard(saved.getPreferredKeyboard().name())
                 .build();
 
         rabbitTemplate.convertAndSend("user.exchange", "", event);
-
         return saved;
     }
 }

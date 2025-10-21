@@ -9,7 +9,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class UserCreatedEvent {
-    private UUID id;        // Same as auth.users.id
+    private UUID id;
     private String username;
     private String email;
+    private String preferredKeyboard;
 }
