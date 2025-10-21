@@ -40,7 +40,7 @@ public class User {
     private String providerId;
 
 	@Enumerated(EnumType.STRING)
-    @Column(name = "preferred_keyboard", insertable = false, updatable = false)
+    @Column(name = "preferred_keyboard", insertable = false)
     private KeyboardModel preferredKeyboard;
 
     @CreationTimestamp
