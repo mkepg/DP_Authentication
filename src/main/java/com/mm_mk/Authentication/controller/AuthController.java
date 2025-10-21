@@ -30,11 +30,11 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<AuthenticationResult> login(@Valid @RequestBody LoginRequest req) {
-        AuthenticationResult result = authService.login(req);
-        return ResponseEntity.ok(result);
-    }
+//    @PostMapping("/login")
+//    public ResponseEntity<AuthenticationResult> login(@Valid @RequestBody LoginRequest req) {
+//        AuthenticationResult result = authService.login(req);
+//        return ResponseEntity.ok(result);
+//    }
 
     @PutMapping("/{userId}")
     public ResponseEntity<UserDTO> updateUser(
