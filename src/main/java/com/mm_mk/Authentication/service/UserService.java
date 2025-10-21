@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -30,11 +31,16 @@ public class UserService {
 
         User saved = repo.save(user);
 
+        // Ensure we have the actual value from database
+        String keyboardValue = Optional.ofNullable(saved.getPreferredKeyboard())
+                .map(KeyboardModel::name)
+                .orElse("Casio");
+
         UserCreatedEvent event = UserCreatedEvent.builder()
                 .id(saved.getId())
                 .username(saved.getUsername())
                 .email(saved.getEmail())
-                .preferredKeyboard(saved.getPreferredKeyboard().name())
+                .preferredKeyboard(keyboardValue)
                 .build();
 
         rabbitTemplate.convertAndSend("user.exchange", "", event);
