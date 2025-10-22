@@ -8,21 +8,35 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
+import org.springframework.security.web.savedrequest.RequestCache;
+import org.springframework.security.web.savedrequest.SavedRequest;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final AppProperties appProperties;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final RequestCache requestCache;
+
+    public OAuth2AuthenticationSuccessHandler(
+            AppProperties appProperties,
+            UserRepository userRepository,
+            UserService userService,
+            @Lazy RequestCache requestCache) {
+        this.appProperties = appProperties;
+        this.userRepository = userRepository;
+        this.userService = userService;
+        this.requestCache = requestCache;
+    }
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -34,7 +48,6 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         // Create or update local user
         createOrUpdateLocalUser(oauthUser);
 
-        // Get target URL (Spring will resume OAuth2 flow)
         String targetUrl = determineTargetUrl(request, response, authentication);
 
         if (response.isCommitted()) {
@@ -43,6 +56,9 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         }
 
         clearAuthenticationAttributes(request);
+
+        log.info("OAuth2 login successful, redirecting to: {}", targetUrl);
+
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 
@@ -50,16 +66,23 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     protected String determineTargetUrl(HttpServletRequest request,
                                         HttpServletResponse response,
                                         Authentication authentication) {
-        // Spring Security will automatically resume the OAuth2 flow
-        String targetUrl = super.determineTargetUrl(request, response, authentication);
 
-        if (targetUrl.equals("/")) {
-            targetUrl = appProperties.getDefaultRedirectUri();
+        // Check if there's a saved request (OAuth2 authorization request)
+        SavedRequest savedRequest = requestCache.getRequest(request, response);
+
+        if (savedRequest != null) {
+            String redirectUrl = savedRequest.getRedirectUrl();
+            log.info("Found saved request, resuming OAuth2 flow: {}", redirectUrl);
+
+            // Clear the saved request
+            requestCache.removeRequest(request, response);
+
+            return redirectUrl;
         }
 
-        log.info("OAuth2 login successful, redirecting to: {}", targetUrl);
-
-        return targetUrl;
+        // No saved request - redirect to default frontend
+        log.info("No saved request found, redirecting to default URI");
+        return appProperties.getDefaultRedirectUri();
     }
 
     private User createOrUpdateLocalUser(OAuth2User oauthUser) {
