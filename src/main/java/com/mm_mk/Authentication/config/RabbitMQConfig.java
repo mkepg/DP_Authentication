@@ -2,6 +2,7 @@ package com.mm_mk.Authentication.config;
 
 import org.springframework.amqp.core.Exchange;
 import org.springframework.amqp.core.ExchangeBuilder;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
@@ -13,8 +14,8 @@ public class RabbitMQConfig {
     public static final String USER_EXCHANGE = "user.exchange";
 
     @Bean
-    public Exchange userExchange() {
-        return ExchangeBuilder.fanoutExchange(USER_EXCHANGE).durable(true).build();
+    public TopicExchange userExchange() {
+        return new TopicExchange(USER_EXCHANGE, true, false);
     }
 
     // JSON converter for RabbitTemplate

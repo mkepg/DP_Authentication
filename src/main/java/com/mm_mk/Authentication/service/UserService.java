@@ -39,11 +39,10 @@ public class UserService {
         UserCreatedEvent event = UserCreatedEvent.builder()
                 .id(saved.getId())
                 .username(saved.getUsername())
-                .email(saved.getEmail())
                 .preferredKeyboard(keyboardValue)
                 .build();
 
-        rabbitTemplate.convertAndSend("user.exchange", "", event);
+        rabbitTemplate.convertAndSend("user.exchange", "user.created", event);
         return saved;
     }
 
@@ -70,11 +69,10 @@ public class UserService {
         UserUpdatedEvent event = UserUpdatedEvent.builder()
                 .id(updated.getId())
                 .username(updated.getUsername())
-                .email(updated.getEmail())
                 .preferredKeyboard(updated.getPreferredKeyboard().name())
                 .build();
 
-        rabbitTemplate.convertAndSend("user.exchange", "", event);
+        rabbitTemplate.convertAndSend("user.exchange", "user.updated", event);
         return updated;
     }
 }

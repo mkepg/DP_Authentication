@@ -107,6 +107,7 @@ public class AuthorizationServerBeansConfig {
                 userRepository.findByUsername(username).ifPresent(user -> {
                     context.getClaims().claim("user_id", user.getId().toString());
                     context.getClaims().claim("email", user.getEmail());
+                    context.getClaims().claim("preferred_keyboard", user.getPreferredKeyboard().name());
                 });
 
                 context.getClaims().claim("custom_claim", "value");
