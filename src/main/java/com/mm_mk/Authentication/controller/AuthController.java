@@ -30,27 +30,13 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
-//    @PostMapping("/login")
-//    public ResponseEntity<AuthenticationResult> login(@Valid @RequestBody LoginRequest req) {
-//        AuthenticationResult result = authService.login(req);
-//        return ResponseEntity.ok(result);
-//    }
-
     @PutMapping("/{userId}")
     public ResponseEntity<UserDTO> updateUser(
             @PathVariable UUID userId,
             @Valid @RequestBody UpdateUserRequest updateRequest,
             Authentication authentication) {
 
-        // TODO Add authorization check here to ensure user can only update their own profile
-        var updatedUser = userService.updateUser(userId, updateRequest);
-
-        UserDTO userDTO = new UserDTO(
-                updatedUser.getId(),
-                updatedUser.getUsername(),
-                updatedUser.getEmail(),
-                updatedUser.getPreferredKeyboard()
-        );
+        UserDTO userDTO = authService.update(userId, updateRequest, authentication);
         return ResponseEntity.ok(userDTO);
     }
 

@@ -39,9 +39,10 @@ public class User {
     @Column(name = "provider_id", length = 255)
     private String providerId;
 
-	@Enumerated(EnumType.STRING)
-    @Column(name = "preferred_keyboard", insertable = false)
-    private KeyboardModel preferredKeyboard;
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "preferred_keyboard")
+    private KeyboardModel preferredKeyboard = KeyboardModel.Casio;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -51,13 +52,18 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public User(UUID id, String username, String email, String passwordHash,
-                String provider, String providerId) {
-        this.id = id;
-        this.username = username;
-        this.email = email;
-        this.passwordHash = passwordHash;
-        this.provider = provider;
-        this.providerId = providerId;
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", username='" + username + '\'' +
+                ", email='" + email + '\'' +
+                ", passwordHash='" + passwordHash + '\'' +
+                ", provider='" + provider + '\'' +
+                ", providerId='" + providerId + '\'' +
+                ", preferredKeyboard=" + preferredKeyboard +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                '}';
     }
 }

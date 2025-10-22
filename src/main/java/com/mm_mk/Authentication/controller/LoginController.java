@@ -1,2 +1,14 @@
-package com.mm_mk.Authentication.controller;public class LoginController {
+package com.mm_mk.Authentication.controller;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+@Controller
+public class LoginController {
+
+    @GetMapping("/login")
+    public String loginPage() {
+        return "login"; // Returns login.html template
+    }
+
 }

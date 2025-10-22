@@ -1,5 +1,8 @@
 package com.mm_mk.Authentication.config;
 
+
+import com.mm_mk.Authentication.handler.FormLoginSuccessHandler;
+import com.mm_mk.Authentication.handler.OAuth2AuthenticationSuccessHandler;
 import com.mm_mk.Authentication.service.CustomOAuth2UserService;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +14,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -26,11 +30,11 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @AllArgsConstructor
 public class SecurityConfig {
 
-    private final OAuth2AuthenticationSuccessHandler successHandler;
+    private final OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler;
+    private final FormLoginSuccessHandler formLoginSuccessHandler;
     private final CustomOAuth2UserService customOAuth2UserService;
 
     private final FrontendProperties frontendProperties;
-
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -39,43 +43,70 @@ public class SecurityConfig {
 
     @Bean
     @Order(1)
-    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
-        http
-                // 1. This chain should ONLY handle your OAuth2 server endpoints
-                .securityMatcher("/oauth2/**")
-                .cors(withDefaults())
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(withDefaults()));
+    public SecurityFilterChain authServerSecurityFilterChain(HttpSecurity http) throws Exception {
+        OAuth2AuthorizationServerConfigurer authzServerConfigurer =
+                new OAuth2AuthorizationServerConfigurer();
 
-        http.apply(new OAuth2AuthorizationServerConfigurer());
+        http
+                .securityMatcher(authzServerConfigurer.getEndpointsMatcher())
+                .with(authzServerConfigurer, (authzServer) ->
+                        authzServer
+                                .oidc(withDefaults()) // Enable OpenID Connect
+                )
+                .authorizeHttpRequests(auth ->
+                        auth.anyRequest().authenticated()
+                )
+                .cors(withDefaults())
+                .csrf(csrf -> csrf
+                        .ignoringRequestMatchers(authzServerConfigurer.getEndpointsMatcher())
+                )
+                .oauth2ResourceServer(oauth2 ->
+                        oauth2.jwt(withDefaults())
+                )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
+                );
 
         return http.build();
     }
 
     @Bean
     @Order(2)
-    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain appSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .securityMatcher("/**") // 2. This is your catch-all chain for your app
                 .cors(withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // 3. Add your public auth endpoints here
-                        .requestMatchers("/api/auth/register", "/api/auth/login").permitAll()
-                        .requestMatchers("/public/**").permitAll()
-                        // 4. Any other request (like your UPDATE endpoint) will require authentication
+                        .requestMatchers(
+                                "/api/auth/register",
+                                "/login",
+                                "/error",
+                                "/public/**",
+                                "/oauth2/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .loginProcessingUrl("/login")
+                        .successHandler(formLoginSuccessHandler)
+                        .failureUrl("/login?error=true")
+                        .permitAll()
+                )
                 .oauth2Login(oauth -> oauth
-                        .authorizationEndpoint(a -> a.baseUri("/oauth2/authorize"))
-                        .redirectionEndpoint(r -> r.baseUri("/login/oauth2/code/*"))
-                        .userInfoEndpoint(u -> u.userService(customOAuth2UserService))
-                        .successHandler(successHandler)
+                        .loginPage("/login")
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService)
+                        )
+                        .successHandler(oAuth2SuccessHandler)
+                )
+                .oauth2ResourceServer(oauth2 ->
+                        oauth2.jwt(withDefaults())
                 );
 
         return http.build();
     }
+
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

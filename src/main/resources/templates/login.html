@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Login</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px 0;
+            cursor: pointer;
+        }
+        .error {
+            color: red;
+            margin: 10px 0;
+        }
+        .oauth-buttons {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+<h2>Login</h2>
+
+<!-- Display error messages -->
+<div th:if="${param.error}" class="error">
+    Invalid username or password.
+</div>
+
+<div th:if="${param.logout}" class="success">
+    You have been logged out successfully.
+</div>
+
+<!-- Traditional username/password login form -->
+<form th:action="@{/login}" method="post">
+    <div class="form-group">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required autofocus />
+    </div>
+    <div class="form-group">
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required />
+    </div>
+    <button type="submit">Login</button>
+</form>
+
+<hr />
+
+<!-- OAuth2 Login Options -->
+<div class="oauth-buttons">
+    <h3>Or login with:</h3>
+    <a th:href="@{/oauth2/authorization/google}">
+        <button type="button">Login with Google</button>
+    </a>
+    <br/>
+    <a th:href="@{/oauth2/authorization/facebook}">
+        <button type="button">Login with Facebook</button>
+    </a>
+</div>
+
+<!-- Link to registration page (if you have one) -->
+<div style="margin-top: 20px;">
+    <p>Don't have an account? <a th:href="@{/api/auth/register}">Register here</a></p>
+</div>
+</body>
+</html>
