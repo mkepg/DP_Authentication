@@ -9,10 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.OAuth2Token;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -27,8 +26,8 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
+import org.springframework.security.oauth2.server.authorization.token.*;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
-import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 
 import java.io.InputStream;
 import java.security.KeyFactory;
@@ -45,15 +44,11 @@ import java.util.UUID;
 public class AuthorizationServerBeansConfig {
 
     private final FrontendProperties frontendProperties;
+    private final JwtProperties jwtProperties;
 
     @Bean
     public OAuth2AuthorizationService authorizationService() {
         return new InMemoryOAuth2AuthorizationService();
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
     }
 
     @Bean
@@ -67,50 +62,56 @@ public class AuthorizationServerBeansConfig {
     public RegisteredClientRepository registeredClientRepository() {
         RegisteredClient.Builder clientBuilder = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("internal-client")
-                // For PKCE with public client - no secret needed
                 .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .authorizationGrantType(new AuthorizationGrantType("password_pkce"))
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
                 .scope(OidcScopes.EMAIL)
                 .scope("read")
                 .scope("write")
                 .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofHours(2))
-                        .refreshTokenTimeToLive(Duration.ofDays(30))
+                        .accessTokenTimeToLive(Duration.ofSeconds(jwtProperties.getAccessTokenExpiration()))
+                        .refreshTokenTimeToLive(Duration.ofSeconds(jwtProperties.getRefreshTokenExpiration()))
                         .reuseRefreshTokens(false)
                         .build())
                 .clientSettings(ClientSettings.builder()
                         .requireAuthorizationConsent(false)
-                        .requireProofKey(true) // PKCE is the security mechanism
+                        .requireProofKey(true)
                         .build());
 
         frontendProperties.getUrls().forEach(url -> {
             clientBuilder.redirectUri(url);
-            clientBuilder.redirectUri(url + "/callback");
+            clientBuilder.redirectUri(url + "/oauth-popup.html");
         });
 
         return new InMemoryRegisteredClientRepository(clientBuilder.build());
     }
 
     @Bean
+    public OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator(JWKSource<SecurityContext> jwkSource) {
+        JwtGenerator jwtGenerator = new JwtGenerator(jwtEncoder(jwkSource));
+        OAuth2AccessTokenGenerator accessTokenGenerator = new OAuth2AccessTokenGenerator();
+        OAuth2RefreshTokenGenerator refreshTokenGenerator = new OAuth2RefreshTokenGenerator();
+
+        return new DelegatingOAuth2TokenGenerator(jwtGenerator, accessTokenGenerator, refreshTokenGenerator);
+    }
+
+    @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer(UserRepository userRepository) {
         return context -> {
             if (context.getTokenType() == OAuth2TokenType.ACCESS_TOKEN) {
-                // Get the principal name (username)
                 String username = context.getPrincipal().getName();
 
                 context.getClaims().subject(username);
 
-                // Find user and add user_id to claims
                 userRepository.findByUsername(username).ifPresent(user -> {
                     context.getClaims().claim("user_id", user.getId().toString());
                     context.getClaims().claim("email", user.getEmail());
                     context.getClaims().claim("preferred_keyboard", user.getPreferredKeyboard().name());
+                    context.getClaims().claim("preferred_username", user.getUsername());
                 });
-
-                context.getClaims().claim("custom_claim", "value");
             }
         };
     }
@@ -124,7 +125,6 @@ public class AuthorizationServerBeansConfig {
     public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) throws Exception {
         return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
     }
-
 
     @Bean
     public JWKSource<SecurityContext> jwkSource() throws Exception {
@@ -167,5 +167,4 @@ public class AuthorizationServerBeansConfig {
             return (RSAPrivateKey) keyFactory.generatePrivate(keySpec);
         }
     }
-
 }

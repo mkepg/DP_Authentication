@@ -10,7 +10,6 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMQConfig {
-
     public static final String USER_EXCHANGE = "user.exchange";
 
     @Bean
@@ -18,7 +17,6 @@ public class RabbitMQConfig {
         return new TopicExchange(USER_EXCHANGE, true, false);
     }
 
-    // JSON converter for RabbitTemplate
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();

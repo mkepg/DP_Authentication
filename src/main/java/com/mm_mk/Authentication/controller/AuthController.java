@@ -1,12 +1,10 @@
 package com.mm_mk.Authentication.controller;
 
-import com.mm_mk.Authentication.request.LoginRequest;
 import com.mm_mk.Authentication.request.RegisterRequest;
 import com.mm_mk.Authentication.request.UpdateUserRequest;
 import com.mm_mk.Authentication.response.AuthenticationResult;
-import com.mm_mk.Authentication.response.UserDTO;
+import com.mm_mk.Authentication.response.UserResponse;
 import com.mm_mk.Authentication.service.AuthService;
-import com.mm_mk.Authentication.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,9 +18,7 @@ import java.util.UUID;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
-
     private final AuthService authService;
-    private final UserService userService;
 
     @PostMapping("/register")
     public ResponseEntity<AuthenticationResult> register(@Valid @RequestBody RegisterRequest req) {
@@ -31,13 +27,8 @@ public class AuthController {
     }
 
     @PutMapping("/{userId}")
-    public ResponseEntity<UserDTO> updateUser(
-            @PathVariable UUID userId,
-            @Valid @RequestBody UpdateUserRequest updateRequest,
-            Authentication authentication) {
-
-        UserDTO userDTO = authService.update(userId, updateRequest, authentication);
-        return ResponseEntity.ok(userDTO);
+    public ResponseEntity<UserResponse> updateUser(@PathVariable UUID userId, @Valid @RequestBody UpdateUserRequest updateRequest, Authentication authentication) {
+        UserResponse userResponse = authService.update(userId, updateRequest, authentication);
+        return ResponseEntity.ok(userResponse);
     }
-
 }

@@ -1,2 +1,21 @@
 BUG:
 local_user tables get filled even if there was an error with the dp_authentication users table.
+
+
+Env Secrets - dont keep secrets in application.properties instead it should be a env var on your machine
+Token Expiration - Make sure your JWT expiration times are reasonable (15-60 minutes for access tokens)
+Refresh Token Rotation - Consider implementing refresh token rotation for better security
+Rate Limiting - Add rate limiting on login/registration endpoints
+HTTPS Enforcement - Ensure all environments use HTTPS
+Token Revocation - Consider how to handle token revocation if needed
+
+Environment Configuration - Move secrets to environment variables
+Logging - Add more security-focused logging (failed logins, etc.)
+Error Handling - Ensure no sensitive data leaks in error responses
+Refresh Token Implementation - Fully implement refresh token flow
+Account Lockout - Implement temporary account lockout after failed attempts
+Email Verification - Add email verification for registrations
+
+Device Management - Track and manage active sessions/devices
+Security Headers - Add security headers (HSTS, Content-Security-Policy)
+Audit Logging - Log security-related events

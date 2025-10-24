@@ -4,9 +4,8 @@ import com.mm_mk.Authentication.model.KeyboardModel;
 
 import java.util.UUID;
 
-public record UserDTO(
+public record UserResponse(
         UUID id,
-
         String username,
         String email,
         KeyboardModel preferredKeyboard

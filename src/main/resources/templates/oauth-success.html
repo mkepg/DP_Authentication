@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Authentication Successful</title>
+    <script>
+        window.onload = function() {
+            try {
+                const userData = {
+                    type: 'OAUTH2_CODE',
+                    user: {
+                        id: '[[${userId}]]',
+                        username: '[[${username}]]',
+                        email: '[[${email}]]',
+                        preferredKeyboard: '[[${preferredKeyboard}]]'
+                    },
+				    accessToken: '[[${accessToken}]]'
+
+                };
+
+                if (window.opener && !window.opener.closed) {
+                    window.opener.postMessage(userData, 'http://localhost:5173');
+                }
+
+                setTimeout(() => {
+                    window.close();
+                }, 500);
+
+            } catch (error) {
+                console.error('Error in OAuth callback:', error);
+                if (window.opener && !window.opener.closed) {
+                    window.opener.postMessage({
+                        type: 'OAUTH2_ERROR',
+                        error: 'Authentication failed'
+                    }, 'http://localhost:5173');
+                }
+                window.close();
+            }
+        }
+    </script>
+</head>
+<body>
+<div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+    <h2>Authentication Successful!</h2>
+    <p>Closing window...</p>
+</div>
+</body>
+</html>
