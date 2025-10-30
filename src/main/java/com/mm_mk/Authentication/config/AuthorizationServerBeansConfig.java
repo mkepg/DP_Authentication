@@ -1,11 +1,14 @@
 package com.mm_mk.Authentication.config;
 
+import com.mm_mk.Authentication.model.User;
 import com.mm_mk.Authentication.repository.UserRepository;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -45,6 +48,8 @@ public class AuthorizationServerBeansConfig {
 
     private final FrontendProperties frontendProperties;
     private final JwtProperties jwtProperties;
+    private static final Logger logger = LoggerFactory.getLogger(AuthorizationServerBeansConfig.class); // Fixed logger name
+    private final UserRepository userRepository;
 
     @Bean
     public OAuth2AuthorizationService authorizationService() {
@@ -82,36 +87,49 @@ public class AuthorizationServerBeansConfig {
                         .build());
 
         frontendProperties.getUrls().forEach(url -> {
-            clientBuilder.redirectUri(url);
+            clientBuilder.redirectUri(url + "/");
             clientBuilder.redirectUri(url + "/oauth-popup.html");
         });
 
-        return new InMemoryRegisteredClientRepository(clientBuilder.build());
+        RegisteredClient registeredClient = clientBuilder.build();
+        logger.info("Registered client created with ID: {} and redirect URIs: {}", registeredClient.getClientId(), registeredClient.getRedirectUris());
+        return new InMemoryRegisteredClientRepository(registeredClient);
     }
 
     @Bean
     public OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator(JWKSource<SecurityContext> jwkSource) {
         JwtGenerator jwtGenerator = new JwtGenerator(jwtEncoder(jwkSource));
+        jwtGenerator.setJwtCustomizer(tokenCustomizer());
+
         OAuth2AccessTokenGenerator accessTokenGenerator = new OAuth2AccessTokenGenerator();
         OAuth2RefreshTokenGenerator refreshTokenGenerator = new OAuth2RefreshTokenGenerator();
 
+        logger.info("OAuth2TokenGenerator configured with JWT generator and refresh token support");
         return new DelegatingOAuth2TokenGenerator(jwtGenerator, accessTokenGenerator, refreshTokenGenerator);
     }
 
     @Bean
-    public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer(UserRepository userRepository) {
+    public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
         return context -> {
-            if (context.getTokenType() == OAuth2TokenType.ACCESS_TOKEN) {
+            if (context.getTokenType().getValue().equals(OAuth2TokenType.ACCESS_TOKEN.getValue())) {
                 String username = context.getPrincipal().getName();
+                logger.debug("Customizing JWT token for user: {}", username);
 
-                context.getClaims().subject(username);
+                User user = userRepository.findByUsername(username)
+                        .orElseThrow(() -> {
+                            logger.error("User not found for token generation: {}", username);
+                            return new RuntimeException("User not found: " + username);
+                        });
 
-                userRepository.findByUsername(username).ifPresent(user -> {
-                    context.getClaims().claim("user_id", user.getId().toString());
-                    context.getClaims().claim("email", user.getEmail());
-                    context.getClaims().claim("preferred_keyboard", user.getPreferredKeyboard().name());
-                    context.getClaims().claim("preferred_username", user.getUsername());
+                context.getClaims().claims(claims -> {
+                    claims.put("sub", user.getId().toString());
+                    claims.put("username", user.getUsername());
+                    claims.put("email", user.getEmail());
+                    claims.put("preferred_keyboard", user.getPreferredKeyboard().name());
+                    claims.put("user_id", user.getId().toString());
                 });
+
+                logger.debug("JWT token customized - subject (UUID): {}, username: {}", user.getId(), user.getUsername());
             }
         };
     }
@@ -122,7 +140,7 @@ public class AuthorizationServerBeansConfig {
     }
 
     @Bean
-    public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) throws Exception {
+    public JwtDecoder jwtDecoder(JWKSource<SecurityContext> jwkSource) {
         return OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource);
     }
 
@@ -137,6 +155,8 @@ public class AuthorizationServerBeansConfig {
                 .build();
 
         JWKSet jwkSet = new JWKSet(rsaKey);
+        logger.info("JWKSource configured with RSA key pair");
+
         return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
     }
 

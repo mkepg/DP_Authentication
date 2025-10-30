@@ -17,15 +17,12 @@ public class CustomOAuth2UserService implements OAuth2UserService<OAuth2UserRequ
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-        // Delegate to the default implementation to fetch user info from provider
         OAuth2User oauth2User = delegate.loadUser(userRequest);
 
-        // Extract user attributes from provider
         Map<String, Object> attributes = new HashMap<>(oauth2User.getAttributes());
 
-        if (!attributes.containsKey("email")) {
+        if (!attributes.containsKey("email"))
             throw new OAuth2AuthenticationException("Email not found from OAuth2 provider");
-        }
 
         return oauth2User;
     }
