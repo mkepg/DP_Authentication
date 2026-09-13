@@ -3,6 +3,13 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+cookies.txt
+.plan
+/logs/
+/logs/auth.log
+auth.log
+send_to_cloud.sh
+Dockerfile
 
 ### STS ###
 .apt_generated

@@ -36,6 +36,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.security.oauth2.server.authorization.web.authentication.*;
 import org.springframework.security.web.authentication.DelegatingAuthenticationConverter;
 
+import java.util.stream.Collectors;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
@@ -46,198 +47,209 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
-    private final OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler;
-    private final CustomOAuth2UserService customOAuth2UserService;
-    private final FrontendProperties frontendProperties;
-    private final PasswordPkceGrantAuthenticationProvider passwordPkceGrantAuthenticationProvider;
-    private final RegisteredClientRepository registeredClientRepository;
-    private final UserDetailsService userDetailsService;
-    private final ActuatorUserAgentFilter actuatorUserAgentFilter;
-    private final CorrelationFilter correlationFilter;
-    private final AdminUserRepository adminUserRepository;
+	private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+	private final OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler;
+	private final CustomOAuth2UserService customOAuth2UserService;
+	private final FrontendProperties frontendProperties;
+	private final PasswordPkceGrantAuthenticationProvider passwordPkceGrantAuthenticationProvider;
+	private final RegisteredClientRepository registeredClientRepository;
+	private final UserDetailsService userDetailsService;
+	private final CorrelationFilter correlationFilter;
+	private final AdminUserRepository adminUserRepository;
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+	@Bean
+	public PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
 
-    @Bean
-    @Order(1)
-    public SecurityFilterChain actuatorSecurity(HttpSecurity http) throws Exception {
-        logger.info("=== Configuring Actuator Security Filter Chain ===");
-        http
-                .securityMatcher("/actuator/**", "/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**")
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**").permitAll()
-                        .anyRequest().hasRole("ADMIN")
-                )
-                .httpBasic(Customizer.withDefaults())
-                .formLogin(form -> form.disable())
-                .addFilterBefore(correlationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(actuatorUserAgentFilter, UsernamePasswordAuthenticationFilter.class);
+	@Bean
+	@Order(1)
+	public SecurityFilterChain actuatorSecurity(HttpSecurity http) throws Exception {
+		logger.info("=== Configuring Actuator Security Filter Chain ===");
+		http
+			.securityMatcher("/actuator/**", "/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**")
+			.csrf(csrf -> csrf.disable())
+			.authorizeHttpRequests(auth -> auth
+					.requestMatchers("/actuator/health", "/actuator/info").permitAll()
+					.requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**").permitAll()
+					.anyRequest().hasRole("ADMIN")
+					)
+			.httpBasic(Customizer.withDefaults())
+			.formLogin(form -> form.disable())
+			.addFilterBefore(correlationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        logger.info("Actuator security configured");
-        return http.build();
-    }
+		logger.info("Actuator security configured");
+		return http.build();
+	}
 
-    @Bean
-    @Order(2)
-    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
-        logger.info("=== Configuring OAuth2 Authorisation-Server Chain ===");
-        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
+	@Bean
+	@Order(2)
+	public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+		logger.info("=== Configuring OAuth2 Authorisation-Server Chain ===");
+		OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
 
-        http.securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-                .with(authorizationServerConfigurer, cfg -> {
-                    cfg.oidc(Customizer.withDefaults());
-                    cfg.tokenEndpoint(token ->
-                            token.accessTokenRequestConverter(
-                                    new DelegatingAuthenticationConverter(
-                                            Arrays.asList(
-                                                    new PasswordPkceGrantAuthenticationConverter(registeredClientRepository), // Your custom one first
-                                                    new OAuth2AuthorizationCodeAuthenticationConverter(),
-                                                    new OAuth2RefreshTokenAuthenticationConverter(),  // This handles refresh_token
-                                                    new OAuth2ClientCredentialsAuthenticationConverter(),
-                                                    new OAuth2DeviceCodeAuthenticationConverter(),
-                                                    new OAuth2TokenExchangeAuthenticationConverter()
-                                            )
-                                    )
-                            )
-                    );
-                    cfg.authorizationEndpoint(authz ->
-                            authz.consentPage("/oauth2/consent")
-                    );
-                })
-                .cors(cors -> cors.configurationSource(corsConfigurationSource(frontendProperties)))
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers(
-                                "/oauth2/**",
-                                "/login/oauth2/**"
-                        )
-                )
-                .exceptionHandling(ex -> ex.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login")))
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
+		http.securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+			.with(authorizationServerConfigurer, cfg -> {
+				cfg.oidc(Customizer.withDefaults());
+				cfg.tokenEndpoint(token ->
+						token.accessTokenRequestConverter(
+							new DelegatingAuthenticationConverter(
+								Arrays.asList(
+									new PasswordPkceGrantAuthenticationConverter(registeredClientRepository),
+									new OAuth2AuthorizationCodeAuthenticationConverter(),
+									new OAuth2RefreshTokenAuthenticationConverter(),
+									new OAuth2ClientCredentialsAuthenticationConverter(),
+									new OAuth2DeviceCodeAuthenticationConverter(),
+									new OAuth2TokenExchangeAuthenticationConverter()
+									)
+								)
+							)
+						);
+				cfg.authorizationEndpoint(authz ->
+						authz.consentPage("/oauth2/consent")
+						);
+			})
+		.cors(cors -> cors.configurationSource(corsConfigurationSource(frontendProperties)))
+			.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+			.csrf(csrf -> csrf
+					.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+					.ignoringRequestMatchers(
+						"/oauth2/**",
+						"/login/oauth2/**"
+						)
+				 )
+			.exceptionHandling(ex -> ex.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login")));
+			//.oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
 
-        http.authenticationProvider(passwordPkceGrantAuthenticationProvider).authenticationProvider(daoAuthenticationProvider());
+		http.authenticationProvider(passwordPkceGrantAuthenticationProvider).authenticationProvider(daoAuthenticationProvider());
 
-        logger.info("OAuth2 chain configured");
-        return http.build();
-    }
+		logger.info("OAuth2 chain configured");
+		return http.build();
+	}
 
-    @Bean
-    @Order(3)
-    public SecurityFilterChain apiJwtChain(HttpSecurity http) throws Exception {
-        logger.info("=== Configuring Stateless JWT Chain (/api/auth/**) ===");
+	@Bean
+	@Order(3)
+	public SecurityFilterChain apiJwtChain(HttpSecurity http) throws Exception {
+		logger.info("=== Configuring Stateless JWT Chain (/api/auth/**) ===");
+		http
+			.securityMatcher("/api/auth/**")
+			.cors(cors -> cors.configurationSource(corsConfigurationSource(frontendProperties)))
+			.csrf(csrf -> csrf.disable())
+			.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+			.headers(headers -> headers
+					.contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'"))
+					.frameOptions(frame -> frame.deny())
+					.httpStrictTransportSecurity(hsts -> hsts
+						.includeSubDomains(true)
+						.maxAgeInSeconds(31536000))
+					.contentTypeOptions(Customizer.withDefaults())
+					)
+			.authorizeHttpRequests(auth ->
+					auth.requestMatchers(HttpMethod.OPTIONS).permitAll()
+					.requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
+					.anyRequest().authenticated()
+					)
+			.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt ->
+						jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
+		logger.info("JWT chain configured");
+		return http.build();
+	}
 
-        http
-                .securityMatcher("/api/auth/**")
-                .cors(cors -> cors.configurationSource(corsConfigurationSource(frontendProperties)))
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth ->
-                        auth.requestMatchers(HttpMethod.OPTIONS).permitAll()
-                                .anyRequest().authenticated()
-                )
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
+	@Bean
+	@Order(4)
+	public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
+		logger.info("=== Configuring Default (Session) Filter Chain ===");
 
-        logger.info("JWT chain configured");
-        return http.build();
-    }
+		http
+			.cors(cors -> cors.configurationSource(corsConfigurationSource(frontendProperties)))
+			.csrf(csrf -> csrf
+					.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+					.ignoringRequestMatchers(
+						"/oauth2/**",
+						"/login/oauth2/**",
+						"/ws/**",
+						"/public/**"
+						)
+				 )
+			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+			.authorizeHttpRequests(auth -> auth
+					.requestMatchers(
+						"/api/csrf",
+						"/login",
+						"/api/auth/register",
+						"/error",
+						"/oauth-success",
+						"/swagger-ui/**",
+						"/v3/api-docs/**",
+						"/api-docs/**",
+						"/ws/**"
+						).permitAll()
+					.anyRequest().authenticated()
+					)
+			.addFilterBefore(correlationFilter, UsernamePasswordAuthenticationFilter.class)
+			.oauth2Login(oauth2 -> oauth2
+					.loginPage("/login")
+					.successHandler(oAuth2SuccessHandler)
+					.userInfoEndpoint(uie -> uie.userService(customOAuth2UserService))
+					)
+			.oauth2Client(Customizer.withDefaults())
+			.formLogin(form -> form.disable())
+			.logout(logout -> logout.logoutSuccessUrl("/login?logout=true").permitAll());
 
-    @Bean
-    @Order(4)
-    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
-        logger.info("=== Configuring Default (Session) Filter Chain ===");
+		logger.info("Default session chain configured");
+		return http.build();
+	}
 
-        http
-                .cors(Customizer.withDefaults())
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                        .ignoringRequestMatchers(
-                                "/oauth2/**",
-                                "/login/oauth2/**",
-                                "/ws/**",
-                                "/public/**"
-                        )
-                )
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/csrf",
-                                "/login",
-                                "/error",
-                                "/oauth-success",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/api-docs/**",
-                                "/ws/**"
-                        ).permitAll()
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(correlationFilter, UsernamePasswordAuthenticationFilter.class)
-                .oauth2Login(oauth2 -> oauth2
-                        .loginPage("/login")
-                        .successHandler(oAuth2SuccessHandler)
-                        .userInfoEndpoint(uie -> uie.userService(customOAuth2UserService))
-                )
-                .oauth2Client(Customizer.withDefaults())
-                .formLogin(form -> form.disable())
-                .logout(logout -> logout.logoutSuccessUrl("/login?logout=true").permitAll());
+	@Bean
+	public DaoAuthenticationProvider daoAuthenticationProvider() {
+		DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+		provider.setUserDetailsService(userDetailsService);
+		provider.setPasswordEncoder(passwordEncoder());
+		return provider;
+	}
 
-        logger.info("Default session chain configured");
-        return http.build();
-    }
+	@Bean
+	public CorsConfigurationSource corsConfigurationSource(FrontendProperties frontendProperties) {
+		CorsConfiguration cfg = new CorsConfiguration();
 
-    @Bean
-    public DaoAuthenticationProvider daoAuthenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder());
-        return provider;
-    }
+		List<String> allowedOrigins = frontendProperties.getUrls().stream()
+			.filter(url -> url != null && !url.isBlank())
+			.collect(Collectors.toList());
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource(FrontendProperties frontendProperties) {
-        logger.info("Configuring CORS with allowed origins: {}", frontendProperties.getUrls());
+		List<String> allOrigins = new ArrayList<>(allowedOrigins);
+		allowedOrigins.forEach(url -> {
+			allOrigins.add(url + "/oauth-popup.html");
+		});
 
-        CorsConfiguration cfg = new CorsConfiguration();
-        List<String> allowedOrigins = new ArrayList<>(frontendProperties.getUrls());
-        allowedOrigins.add("http://localhost:5173/oauth-popup.html");
-        allowedOrigins.add("http://localhost:5174/oauth-popup.html");
+		cfg.setAllowedOrigins(allOrigins);
+		cfg.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","OPTIONS","PATCH"));
+		cfg.setAllowedHeaders(Arrays.asList(
+					"Authorization","Content-Type","X-Requested-With","X-XSRF-TOKEN","X-Correlation-ID"
+					));
+		cfg.setExposedHeaders(Arrays.asList(
+					"Authorization","X-XSRF-TOKEN","X-Correlation-ID"
+					));
+		cfg.setAllowCredentials(true);
+		cfg.setMaxAge(3600L);
 
-        cfg.setAllowedOrigins(allowedOrigins);
-        cfg.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","OPTIONS","PATCH"));
-        cfg.setAllowedHeaders(Arrays.asList(
-                "Authorization","Content-Type","X-Requested-With","X-XSRF-TOKEN","X-Correlation-ID"
-        ));
-        cfg.setExposedHeaders(Arrays.asList(
-                "Authorization","X-XSRF-TOKEN","X-Correlation-ID"
-        ));
-        cfg.setAllowCredentials(true);
-        cfg.setMaxAge(3600L);
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", cfg);
+		return source;
+	}
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", cfg);
-        return source;
-    }
-
-    @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        return new JwtAuthenticationConverter() {{
-            setJwtGrantedAuthoritiesConverter(jwt -> {
-                UUID userId = UUID.fromString(jwt.getSubject());
-                List<GrantedAuthority> authorities = new ArrayList<>();
-                authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-                if (adminUserRepository.isUserAdmin(userId)) {
-                    authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
-                }
-                return authorities;
-            });
-        }};
-    }
+	@Bean
+	public JwtAuthenticationConverter jwtAuthenticationConverter() {
+		return new JwtAuthenticationConverter() {{
+			setJwtGrantedAuthoritiesConverter(jwt -> {
+				UUID userId = UUID.fromString(jwt.getSubject());
+				List<GrantedAuthority> authorities = new ArrayList<>();
+				authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+				if (adminUserRepository.isUserAdmin(userId)) {
+					authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+				}
+				return authorities;
+			});
+		}};
+	}
 
 }

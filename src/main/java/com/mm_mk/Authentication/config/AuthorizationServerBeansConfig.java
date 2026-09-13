@@ -9,6 +9,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -30,7 +31,6 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.*;
-import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 
 import java.io.InputStream;
 import java.security.KeyFactory;
@@ -45,11 +45,13 @@ import java.util.UUID;
 @Configuration
 @RequiredArgsConstructor
 public class AuthorizationServerBeansConfig {
-
     private final FrontendProperties frontendProperties;
     private final JwtProperties jwtProperties;
-    private static final Logger logger = LoggerFactory.getLogger(AuthorizationServerBeansConfig.class); // Fixed logger name
+    private static final Logger logger = LoggerFactory.getLogger(AuthorizationServerBeansConfig.class);
     private final UserRepository userRepository;
+
+    @Value("${app.oauth2.issuer:http://localhost:8080}")
+    private String issuer;
 
     @Bean
     public OAuth2AuthorizationService authorizationService() {
@@ -59,38 +61,36 @@ public class AuthorizationServerBeansConfig {
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
         return AuthorizationServerSettings.builder()
-                .issuer("http://localhost:8080")
-                .build();
+            .issuer(issuer)
+            .build();
     }
 
     @Bean
     public RegisteredClientRepository registeredClientRepository() {
         RegisteredClient.Builder clientBuilder = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("internal-client")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .authorizationGrantType(new AuthorizationGrantType("password_pkce"))
-                .scope(OidcScopes.OPENID)
-                .scope(OidcScopes.PROFILE)
-                .scope(OidcScopes.EMAIL)
-                .scope("read")
-                .scope("write")
-                .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofSeconds(jwtProperties.getAccessTokenExpiration()))
-                        .refreshTokenTimeToLive(Duration.ofSeconds(jwtProperties.getRefreshTokenExpiration()))
-                        .reuseRefreshTokens(false)
-                        .build())
-                .clientSettings(ClientSettings.builder()
-                        .requireAuthorizationConsent(false)
-                        .requireProofKey(true)
-                        .build());
-
+            .clientId("internal-client")
+            .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+            .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+            .authorizationGrantType(new AuthorizationGrantType("password_pkce"))
+            .scope(OidcScopes.OPENID)
+            .scope(OidcScopes.PROFILE)
+            .scope(OidcScopes.EMAIL)
+            .scope("read")
+            .scope("write")
+            .tokenSettings(TokenSettings.builder()
+                .accessTokenTimeToLive(Duration.ofSeconds(jwtProperties.getAccessTokenExpiration()))
+                .refreshTokenTimeToLive(Duration.ofSeconds(jwtProperties.getRefreshTokenExpiration()))
+                .reuseRefreshTokens(false)
+                .build())
+            .clientSettings(ClientSettings.builder()
+                .requireAuthorizationConsent(false)
+                .requireProofKey(true)
+                .build());
         frontendProperties.getUrls().forEach(url -> {
             clientBuilder.redirectUri(url + "/");
             clientBuilder.redirectUri(url + "/oauth-popup.html");
         });
-
         RegisteredClient registeredClient = clientBuilder.build();
         logger.info("Registered client created with ID: {} and redirect URIs: {}", registeredClient.getClientId(), registeredClient.getRedirectUris());
         return new InMemoryRegisteredClientRepository(registeredClient);
@@ -100,10 +100,8 @@ public class AuthorizationServerBeansConfig {
     public OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator(JWKSource<SecurityContext> jwkSource) {
         JwtGenerator jwtGenerator = new JwtGenerator(jwtEncoder(jwkSource));
         jwtGenerator.setJwtCustomizer(tokenCustomizer());
-
         OAuth2AccessTokenGenerator accessTokenGenerator = new OAuth2AccessTokenGenerator();
         OAuth2RefreshTokenGenerator refreshTokenGenerator = new OAuth2RefreshTokenGenerator();
-
         logger.info("OAuth2TokenGenerator configured with JWT generator and refresh token support");
         return new DelegatingOAuth2TokenGenerator(jwtGenerator, accessTokenGenerator, refreshTokenGenerator);
     }
@@ -114,13 +112,11 @@ public class AuthorizationServerBeansConfig {
             if (context.getTokenType().getValue().equals(OAuth2TokenType.ACCESS_TOKEN.getValue())) {
                 String username = context.getPrincipal().getName();
                 logger.debug("Customizing JWT token for user: {}", username);
-
                 User user = userRepository.findByUsername(username)
-                        .orElseThrow(() -> {
-                            logger.error("User not found for token generation: {}", username);
-                            return new RuntimeException("User not found: " + username);
-                        });
-
+                    .orElseThrow(() -> {
+                        logger.error("User not found for token generation: {}", username);
+                        return new RuntimeException("User not found: " + username);
+                    });
                 context.getClaims().claims(claims -> {
                     claims.put("sub", user.getId().toString());
                     claims.put("username", user.getUsername());
@@ -128,7 +124,6 @@ public class AuthorizationServerBeansConfig {
                     claims.put("preferred_keyboard", user.getPreferredKeyboard().name());
                     claims.put("user_id", user.getId().toString());
                 });
-
                 logger.debug("JWT token customized - subject (UUID): {}, username: {}", user.getId(), user.getUsername());
             }
         };
@@ -148,15 +143,12 @@ public class AuthorizationServerBeansConfig {
     public JWKSource<SecurityContext> jwkSource() throws Exception {
         RSAPublicKey publicKey = loadPublicKey();
         RSAPrivateKey privateKey = loadPrivateKey();
-
         RSAKey rsaKey = new RSAKey.Builder(publicKey)
-                .privateKey(privateKey)
-                .keyID(UUID.randomUUID().toString())
-                .build();
-
+            .privateKey(privateKey)
+            .keyID(UUID.randomUUID().toString())
+            .build();
         JWKSet jwkSet = new JWKSet(rsaKey);
         logger.info("JWKSource configured with RSA key pair");
-
         return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
     }
 
@@ -164,9 +156,9 @@ public class AuthorizationServerBeansConfig {
         var resource = new ClassPathResource("certifications/public.pem");
         try (InputStream is = resource.getInputStream()) {
             String key = new String(is.readAllBytes())
-                    .replace("-----BEGIN PUBLIC KEY-----", "")
-                    .replace("-----END PUBLIC KEY-----", "")
-                    .replaceAll("\\s", "");
+                .replace("-----BEGIN PUBLIC KEY-----", "")
+                .replace("-----END PUBLIC KEY-----", "")
+                .replaceAll("\\s", "");
             byte[] decoded = Base64.getDecoder().decode(key);
             X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decoded);
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
@@ -178,9 +170,9 @@ public class AuthorizationServerBeansConfig {
         var resource = new ClassPathResource("certifications/private.pem");
         try (InputStream is = resource.getInputStream()) {
             String key = new String(is.readAllBytes())
-                    .replace("-----BEGIN PRIVATE KEY-----", "")
-                    .replace("-----END PRIVATE KEY-----", "")
-                    .replaceAll("\\s", "");
+                .replace("-----BEGIN PRIVATE KEY-----", "")
+                .replace("-----END PRIVATE KEY-----", "")
+                .replaceAll("\\s", "");
             byte[] decoded = Base64.getDecoder().decode(key);
             PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(decoded);
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");

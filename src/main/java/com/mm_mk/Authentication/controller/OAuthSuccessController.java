@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.OAuth2Token;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -26,22 +27,23 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import java.time.Instant;
-import java.util.UUID;
 import java.util.List;
+import java.util.UUID;
 
 @Controller
 @RequiredArgsConstructor
 @Tag(name = "OAuth2", description = "OAuth2 authentication flow")
 public class OAuthSuccessController {
-
     private static final Logger logger = LoggerFactory.getLogger(OAuthSuccessController.class);
     private static final long SLOW_OPERATION_THRESHOLD_MS = 1000;
-
     private final UserRepository userRepository;
     private final UserService userService;
     private final OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator;
     private final RegisteredClientRepository registeredClientRepository;
     private final JwtEncoder jwtEncoder;
+
+    @Value("${app.oauth2.issuer:http://localhost:8080}")
+    private String issuer;
 
     @GetMapping("/oauth-success")
     @Operation(summary = "OAuth2 success callback", description = "Handles OAuth2 login success")
@@ -50,7 +52,6 @@ public class OAuthSuccessController {
         long startTime = System.currentTimeMillis();
         String correlationId = CorrelationIdUtil.getCorrelationId();
         logger.info("Processing OAuth success - correlationId: {}, user: {}", correlationId, oauth2User.getName());
-
         try {
             String name = oauth2User.getAttribute("name");
             String email = oauth2User.getAttribute("email");
@@ -58,29 +59,28 @@ public class OAuthSuccessController {
                 logger.error("Email not found from OAuth2 provider - correlationId: {}, user: {}", correlationId, oauth2User.getName());
                 throw new IllegalStateException("Email not found from OAuth2 provider");
             }
-
             User user = userRepository.findByEmail(email)
-                    .map(existingUser -> {
-                        if (name != null && !name.equals(existingUser.getUsername())) {
-                            logger.debug("Updating username for user - correlationId: {}, email: {}, from: {} to: {}", correlationId, email, existingUser.getUsername(), name);
-                            existingUser.setUsername(name);
-                            return userRepository.save(existingUser);
-                        }
-                        logger.debug("User already exists, no update needed - correlationId: {}, email: {}", correlationId, email);
-                        return existingUser;
-                    })
-                    .orElseGet(() -> {
-                        String username = name != null ? name : email.split("@")[0];
-                        String uniqueUsername = username;
-                        int counter = 1;
-                        while (userRepository.findByUsername(uniqueUsername).isPresent()) {
-                            uniqueUsername = username + counter;
-                            counter++;
-                        }
-                        String randomPassword = UUID.randomUUID().toString();
-                        logger.info("Creating new user from OAuth - correlationId: {}, username: {}, email: {}", correlationId, uniqueUsername, email);
-                        return userService.createUser(uniqueUsername, email, randomPassword);
-                    });
+                .map(existingUser -> {
+                    if (name != null && !name.equals(existingUser.getUsername())) {
+                        logger.debug("Updating username for user - correlationId: {}, email: {}, from: {} to: {}", correlationId, email, existingUser.getUsername(), name);
+                        existingUser.setUsername(name);
+                        return userRepository.save(existingUser);
+                    }
+                    logger.debug("User already exists, no update needed - correlationId: {}, email: {}", correlationId, email);
+                    return existingUser;
+                })
+                .orElseGet(() -> {
+                    String username = name != null ? name : email.split("@")[0];
+                    String uniqueUsername = username;
+                    int counter = 1;
+                    while (userRepository.findByUsername(uniqueUsername).isPresent()) {
+                        uniqueUsername = username + counter;
+                        counter++;
+                    }
+                    String randomPassword = UUID.randomUUID().toString();
+                    logger.info("Creating new user from OAuth - correlationId: {}, username: {}, email: {}", correlationId, uniqueUsername, email);
+                    return userService.createUser(uniqueUsername, email, randomPassword);
+                });
 
             String accessToken = generateAccessToken(user);
             if (accessToken == null) {
@@ -93,10 +93,8 @@ public class OAuthSuccessController {
             model.addAttribute("email", user.getEmail());
             model.addAttribute("preferredKeyboard", user.getPreferredKeyboard().name());
             model.addAttribute("accessToken", accessToken);
-
             logger.info("OAuth success processed - correlationId: {}, user: {}, userId: {}", correlationId, user.getUsername(), user.getId());
             return "oauth-success";
-
         } catch (Exception e) {
             logger.error("OAuth success processing failed - correlationId: {}", correlationId, e);
             model.addAttribute("error", e.getMessage());
@@ -113,30 +111,25 @@ public class OAuthSuccessController {
         long startTime = System.currentTimeMillis();
         String correlationId = CorrelationIdUtil.getCorrelationId();
         logger.debug("Generating access token - correlationId: {}, user: {}", correlationId, user.getUsername());
-
         try {
             RegisteredClient registeredClient = registeredClientRepository.findByClientId("internal-client");
             if (registeredClient == null) {
                 logger.error("Registered client not found - correlationId: {}, clientId: internal-client", correlationId);
                 return null;
             }
-
             JwtClaimsSet claims = JwtClaimsSet.builder()
-                    .issuer("http://localhost:8080")
-                    .subject(user.getId().toString())
-                    .audience(List.of(registeredClient.getClientId()))
-                    .issuedAt(Instant.now())
-                    .expiresAt(Instant.now().plusSeconds(7200))
-                    .claim("username", user.getUsername())
-                    .claim("email", user.getEmail())
-                    .claim("preferred_keyboard", user.getPreferredKeyboard().name())
-                    .build();
-
+                .issuer(issuer)
+                .subject(user.getId().toString())
+                .audience(List.of(registeredClient.getClientId()))
+                .issuedAt(Instant.now())
+                .expiresAt(Instant.now().plusSeconds(7200))
+                .claim("username", user.getUsername())
+                .claim("email", user.getEmail())
+                .claim("preferred_keyboard", user.getPreferredKeyboard().name())
+                .build();
             Jwt jwt = jwtEncoder.encode(JwtEncoderParameters.from(claims));
-
             logger.debug("JWT token generated successfully - correlationId: {}, user: {}, subject (UUID): {}", correlationId, user.getUsername(), user.getId());
             return jwt.getTokenValue();
-
         } catch (Exception e) {
             logger.error("Token generation failed - correlationId: {}, user: {}", correlationId, user.getUsername(), e);
             return null;
