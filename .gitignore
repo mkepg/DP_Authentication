@@ -1,6 +1,8 @@
 HELP.md
 target/
-/src/main/resources/
+/src/main/resources/application.properties
+/src/main/resources/application-*.properties
+/src/main/resources/certifications/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -42,3 +44,34 @@ build/
 
 # Ignore local secrets
 src/main/resources/application-local.properties
+
+### Secrets & local configuration (never commit) ###
+# Private keys / certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+src/main/resources/certifications/
+
+# Local runtime config (use application.properties.example as the template)
+src/main/resources/application.properties
+src/main/resources/application-*.properties
+!src/main/resources/application.properties.example
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Runtime logs
+logs/
+*.log
+*.log.*
+*.log.*.gz
+
+# Source dumps / scratch files
+all_code.txt
+all_java_code.txt
+cookies.txt

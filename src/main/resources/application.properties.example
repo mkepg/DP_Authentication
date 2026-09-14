@@ -1,0 +1,103 @@
+# ---------------------------------------------------------------------------
+# Template configuration. Copy to 'application.properties' and fill in values.
+#   cp src/main/resources/application.properties.example \
+#      src/main/resources/application.properties
+# The real application.properties is gitignored and must never be committed.
+# Secrets are supplied via environment variables - see ${...} placeholders.
+# ---------------------------------------------------------------------------
+
+
+frontend.urls[0]=${FRONTEND_URL_1:}
+frontend.urls[1]=${FRONTEND_URL_2:}
+frontend.urls[2]=${FRONTEND_URL_3:}
+frontend.urls[3]=${FRONTEND_URL_4:}
+frontend.urls[4]=${FRONTEND_URL_5:}
+spring.rabbitmq.username=${RABBITMQ_USERNAME:guest}
+spring.rabbitmq.password=${RABBITMQ_PASSWORD:guest}
+app.oauth2.issuer=${OAUTH2_ISSUER:http://localhost:8080}
+app.oauth2.default-redirect-uri=${FRONTEND_URL:http://localhost:5173}
+app.oauth2.authorized-redirect-uris[0]=${FRONTEND_URL:http://localhost:5173}
+app.oauth2.authorized-redirect-uris[1]=${FRONTEND_URL:http://localhost:5173}/oauth-popup.html
+
+server.address=127.0.0.1
+spring.application.name=DP.Authentication
+spring.jpa.open-in-view=false
+server.port=8080
+server.shutdown=graceful
+spring.profiles.active=local
+spring.lifecycle.timeout-per-shutdown-phase=30s
+
+# PostgreSQL
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.datasource.url=jdbc:postgresql://localhost:5432/dp_authentication
+spring.datasource.username=${DATABASE_USERNAME:masem}
+spring.datasource.password=${DATABASE_PASSWORD:}
+
+# JPA / Hibernate
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.properties.hibernate.jdbc.lob.non_contextual_creation=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+spring.datasource.hikari.minimum-idle=2
+spring.datasource.hikari.maximum-pool-size=10
+spring.datasource.hikari.idle-timeout=300000
+spring.datasource.hikari.pool-name=HikariPool-Auth
+
+# JDBC
+spring.data.jdbc.repositories.enabled=false
+
+# RabbitMQ
+spring.rabbitmq.host=localhost
+spring.rabbitmq.port=5672
+app.rabbitmq.exchange=user.exchange
+
+
+# OAuth
+spring.security.oauth2.client.registration.google.client-id=${GOOGLE_CLIENT_ID}
+spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_SECRET}
+spring.security.oauth2.client.registration.google.scope=openid,profile,email
+spring.security.oauth2.client.registration.google.redirect-uri={baseUrl}/login/oauth2/code/{registrationId}
+spring.security.oauth2.client.registration.google.authorization-grant-type=authorization_code
+spring.security.oauth2.client.registration.google.client-name=Google
+
+spring.security.oauth2.client.registration.facebook.client-id=${FACEBOOK_CLIENT_ID}
+spring.security.oauth2.client.registration.facebook.client-secret=${FACEBOOK_CLIENT_SECRET}
+spring.security.oauth2.client.registration.facebook.scope=email,public_profile
+spring.security.oauth2.client.registration.facebook.redirect-uri={baseUrl}/login/oauth2/code/{registrationId}
+spring.security.oauth2.client.registration.facebook.authorization-grant-type=authorization_code
+spring.security.oauth2.client.registration.facebook.client-name=Facebook
+
+spring.security.oauth2.client.provider.google.authorization-uri=https://accounts.google.com/o/oauth2/v2/auth
+spring.security.oauth2.client.provider.google.token-uri=https://oauth2.googleapis.com/token
+spring.security.oauth2.client.provider.google.user-info-uri=https://www.googleapis.com/oauth2/v3/userinfo
+spring.security.oauth2.client.provider.google.jwk-set-uri=https://www.googleapis.com/oauth2/v3/certs
+spring.security.oauth2.client.provider.google.user-name-attribute=sub
+
+spring.security.oauth2.client.provider.facebook.authorization-uri=https://www.facebook.com/v19.0/dialog/oauth
+spring.security.oauth2.client.provider.facebook.token-uri=https://graph.facebook.com/v19.0/oauth/access_token
+spring.security.oauth2.client.provider.facebook.user-info-uri=https://graph.facebook.com/v19.0/me?fields=id,name,email,first_name,last_name,picture
+spring.security.oauth2.client.provider.facebook.user-name-attribute=id
+
+
+# JWT
+app.jwt.access-token-expiration=7200
+app.jwt.refresh-token-expiration=2592000
+
+# Logging
+logging.file.name=logs/auth.log
+logging.logback.rollingpolicy.max-file-size=10MB
+logging.logback.rollingpolicy.max-history=10
+logging.logback.rollingpolicy.clean-history-on-start=false
+logging.pattern.console=%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr([%X{correlationId}]){magenta} %clr(${LOG_LEVEL_PATTERN:%5p}) %clr(${PID:- }){cyan} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}
+logging.pattern.file=%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{correlationId}] %-5level ${PID:- } --- [%15.15t] %-40.40logger{39} : %msg%n
+
+# Actuator
+management.server.port=9000
+management.server.address=127.0.0.1
+management.endpoints.web.exposure.include=health,info,metrics,loggers
+management.endpoint.health.show-details=always
+management.endpoint.loggers.enabled=true
+
+# OpenAPI
+springdoc.api-docs.enabled=true
+springdoc.swagger-ui.enabled=true
+springdoc.swagger-ui.path=/swagger-ui.html
