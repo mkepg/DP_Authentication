@@ -6,17 +6,12 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.core.*;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
@@ -28,9 +23,7 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.stereotype.Component;
 
-import java.time.Instant;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Component
@@ -40,22 +33,13 @@ public class PasswordPkceGrantAuthenticationProvider implements AuthenticationPr
     private final OAuth2AuthorizationService authorizationService;
     private final UserRepository userRepository;
     private final ObjectProvider<AuthenticationManager> authenticationManagerProvider;
-    private final JwtEncoder jwtEncoder;
     private final OAuth2TokenGenerator<? extends OAuth2Token> tokenGenerator;
-
-    @Value("${app.oauth2.issuer:http://localhost:8080}")
-    private String issuer;
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
         PasswordPkceGrantAuthenticationToken passwordPkceAuthentication = (PasswordPkceGrantAuthenticationToken) authentication;
         OAuth2ClientAuthenticationToken clientPrincipal = (OAuth2ClientAuthenticationToken) passwordPkceAuthentication.getPrincipal();
         RegisteredClient registeredClient = clientPrincipal.getRegisteredClient();
-
-        logger.info("🔐 DEBUG - Starting authentication");
-        logger.info("🔐 DEBUG - tokenGenerator: {}", tokenGenerator != null ? "present" : "NULL");
-        logger.info("🔐 DEBUG - jwtEncoder: {}", jwtEncoder != null ? "present" : "NULL");
-        logger.info("🔐 DEBUG - registeredClient: {}", registeredClient != null ? "present" : "NULL");
 
         Authentication userAuthentication = authenticationManagerProvider.getObject().authenticate(
             new UsernamePasswordAuthenticationToken(
@@ -68,48 +52,43 @@ public class PasswordPkceGrantAuthenticationProvider implements AuthenticationPr
         User user = userRepository.findByUsername(canonicalUsername)
             .orElseThrow(() -> new OAuth2AuthenticationException(OAuth2ErrorCodes.INVALID_GRANT));
 
-        logger.info("🔐 DEBUG - User authenticated: {}", user.getUsername());
-        logger.info("🔐 DEBUG - userAuthentication: {}", userAuthentication != null ? "present" : "NULL");
-        logger.info("🔐 DEBUG - Attempting manual JWT creation...");
+        logger.debug("password_pkce grant authenticated user: {}", user.getId());
 
-        Jwt jwt = createSimpleJwt(user, registeredClient);
-
-        logger.info("🔐 DEBUG - Manual JWT created successfully");
-
+        OAuth2Token generatedAccessToken = tokenGenerator.generate(
+            createTokenContext(registeredClient, userAuthentication));
+        if (generatedAccessToken == null) {
+            throw new OAuth2AuthenticationException(new OAuth2Error(
+                OAuth2ErrorCodes.SERVER_ERROR, "Failed to generate access token", null));
+        }
         OAuth2AccessToken accessToken = new OAuth2AccessToken(
             OAuth2AccessToken.TokenType.BEARER,
-            jwt.getTokenValue(),
-            jwt.getIssuedAt(),
-            jwt.getExpiresAt(),
+            generatedAccessToken.getTokenValue(),
+            generatedAccessToken.getIssuedAt(),
+            generatedAccessToken.getExpiresAt(),
             registeredClient.getScopes()
         );
 
-        logger.info("🔐 DEBUG - Access token created");
-
-        OAuth2RefreshToken refreshToken = new OAuth2RefreshToken(
-            "refresh_" + System.currentTimeMillis(),
-            Instant.now(),
-            Instant.now().plusSeconds(86400)
-        );
-
-        logger.info("🔐 DEBUG - Refresh token created");
+        OAuth2Token generatedRefreshToken = tokenGenerator.generate(
+            createRefreshTokenContext(registeredClient, userAuthentication));
+        if (!(generatedRefreshToken instanceof OAuth2RefreshToken refreshToken)) {
+            throw new OAuth2AuthenticationException(new OAuth2Error(
+                OAuth2ErrorCodes.SERVER_ERROR, "Failed to generate refresh token", null));
+        }
 
         OAuth2Authorization authorization = OAuth2Authorization.withRegisteredClient(registeredClient)
-            .principalName(user.getId().toString())
+            .principalName(canonicalUsername)
             .authorizationGrantType(new AuthorizationGrantType("password_pkce"))
+            .authorizedScopes(registeredClient.getScopes())
+            .attribute(java.security.Principal.class.getName(), userAuthentication)
             .accessToken(accessToken)
             .refreshToken(refreshToken)
             .build();
 
-        logger.info("🔐 DEBUG - Authorization built, attempting save...");
         authorizationService.save(authorization);
-        logger.info("🔐 DEBUG - Authorization saved successfully");
 
         Map<String, Object> additionalParameters = new HashMap<>();
         additionalParameters.put("user_id", user.getId().toString());
         additionalParameters.put("preferred_keyboard", user.getPreferredKeyboard().name());
-
-        logger.info("🔐 DEBUG - Returning successful authentication");
 
         return new OAuth2AccessTokenAuthenticationToken(
             registeredClient,
@@ -118,20 +97,6 @@ public class PasswordPkceGrantAuthenticationProvider implements AuthenticationPr
             refreshToken,
             additionalParameters
         );
-    }
-
-    private Jwt createSimpleJwt(User user, RegisteredClient registeredClient) {
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-            .issuer(issuer)
-            .subject(user.getId().toString())
-            .audience(List.of(registeredClient.getClientId()))
-            .issuedAt(Instant.now())
-            .expiresAt(Instant.now().plusSeconds(7200))
-            .claim("username", user.getUsername())
-            .claim("email", user.getEmail())
-            .claim("preferred_keyboard", user.getPreferredKeyboard().name())
-            .build();
-        return jwtEncoder.encode(JwtEncoderParameters.from(claims));
     }
 
     private OAuth2TokenContext createTokenContext(RegisteredClient registeredClient, Authentication userAuthentication) {
