@@ -1,16 +1,19 @@
-# DP_Authentication
+# Duo Piano — Authentication Service
 
 **A real-time collaborative 3D piano — play together in the browser.**
 
-![Duo Piano](docs/images/menu.jpg)
-
-🎹 **[Try it live →](https://duopiano.masemharuspex.com/)**
+This repository is the OAuth2 authorization server, one of four services behind
+Duo Piano.
 
 [![CI](https://github.com/mkepg/DP_Authentication/actions/workflows/ci.yml/badge.svg)](https://github.com/mkepg/DP_Authentication/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
 ![RabbitMQ](https://img.shields.io/badge/RabbitMQ-FF6600?logo=rabbitmq&logoColor=white)
+
+🎹 **[Try it live →](https://duopiano.masemharuspex.com/)**
+
+![Duo Piano](docs/images/menu.jpg)
 
 ---
 
