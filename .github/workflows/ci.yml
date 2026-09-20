@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build (Java 17)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Compile and package
+        # Tests are skipped deliberately. The only test is an @SpringBootTest
+        # context load, which requires PostgreSQL, RabbitMQ and the RSA signing
+        # keys under src/main/resources/certifications/ — all gitignored, so the
+        # context cannot start on a clean runner. This job verifies that the
+        # sources compile and every dependency resolves.
+        run: ./mvnw -B package -DskipTests
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: dp-authentication-jar
+          path: target/*.jar
+          retention-days: 7
+          if-no-files-found: error

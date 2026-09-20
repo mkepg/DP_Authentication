@@ -6,6 +6,7 @@
 
 🎹 **[Try it live →](https://duopiano.masemharuspex.com/)**
 
+[![CI](https://github.com/mkepg/DP_Authentication/actions/workflows/ci.yml/badge.svg)](https://github.com/mkepg/DP_Authentication/actions/workflows/ci.yml)
 ![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
@@ -138,7 +139,7 @@ profile attribute or drop it. It appears in:
 `oauth2/PasswordPkceGrantAuthenticationProvider.java` · and the
 `preferred_keyboard` column.
 
-## Running locally
+## Quick start
 
 Needs **Java 17+**, **PostgreSQL**, and **RabbitMQ**.
 
