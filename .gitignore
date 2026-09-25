@@ -75,3 +75,12 @@ logs/
 all_code.txt
 all_java_code.txt
 cookies.txt
+
+# Local assistant scaffolding. Kept on disk, never committed.
+.superpowers/
+.sdd/
+docs/superpowers/
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
